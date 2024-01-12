@@ -24,7 +24,7 @@ _OUTPUT_PROTO = flags.DEFINE_string(
     "output_proto", "", "Output file to write the cp_model proto to."
 )
 _PARAMS = flags.DEFINE_string(
-    "params", "max_time_in_seconds:30.0", "Sat solver parameters."
+    "params", "max_time_in_seconds:10.0", "Sat solver parameters."
 )
 
 
@@ -185,6 +185,7 @@ def add_soft_sum_constraint(
 
     return cost_variables, cost_coefficients
 
+
 def add_soft_sum_hours_constraint(
         model, works, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost, prefix
 ):
@@ -224,42 +225,42 @@ def solve_shift_scheduling(params, output_proto):
     # List of employees
     # Key is employee id, value list is [name, working hours]
     employees = {
-        "0": ["Cedric", 32],
-        "1": ["Jayson", 32],
-        "2": ["Corbin", 32],
-        "3": ["Johnathon", 32],
-        "4": ["Bennett", 32],
-        "5": ["Tyree", 32],
-        "6": ["Ethen", 32],
-        "7": ["Walter", 32],
-        "8": ["Valentino", 32],
-        "9": ["Sullivan", 32],
-        "10": ["Jorden", 32],
-        "11": ["Trace", 32],
-        "12": ["Brian", 32],
-        "13": ["Ramiro", 32],
-        "14": ["Casey", 32],
-        "15": ["Skylar", 32],
-        "16": ["Ben", 32],
-        "17": ["Isiah", 32],
-        "18": ["Jamison", 32],
-        "19": ["Lennon", 32],
-        "20": ["Blaze", 32],
-        "21": ["Prince", 32],
-        "22": ["Humberto", 32],
-        "23": ["Devyn", 32],
-        "24": ["Jaylan", 32],
-        "25": ["Ronan", 32],
-        "26": ["Devon", 32],
-        "27": ["Broderick", 32],
-        "28": ["Jaylon", 32],
-        "29": ["Cristopher", 32],
+        0: ["Cedric", 32],
+        1: ["Jayson", 32],
+        2: ["Corbin", 32],
+        3: ["Johnathon", 32],
+        4: ["Bennett", 32],
+        5: ["Tyree", 32],
+        6: ["Ethen", 32],
+        7: ["Walter", 32],
+        8: ["Valentino", 32],
+        9: ["Sullivan", 32],
+        10: ["Jorden", 32],
+        11: ["Trace", 32],
+        12: ["Brian", 32],
+        13: ["Ramiro", 32],
+        14: ["Casey", 32],
+        15: ["Skylar", 32],
+        16: ["Ben", 32],
+        17: ["Isiah", 32],
+        18: ["Jamison", 32],
+        19: ["Lennon", 32],
+        20: ["Blaze", 32],
+        21: ["Prince", 32],
+        22: ["Humberto", 32],
+        23: ["Devyn", 32],
+        24: ["Jaylan", 32],
+        25: ["Ronan", 32],
+        26: ["Devon", 32],
+        27: ["Broderick", 32],
+        28: ["Jaylon", 32],
+        29: ["Cristopher", 32]
     }
 
     num_employees = len(employees)
     num_weeks = 8
     shifts = ["O", "M", "A", "N"]
-    shift_duration = [32, 32, 32, 33]
+    shift_duration = [8, 8, 8, 9]
     weekends = []
     for i in range(num_weeks):
         weekends.append(i*7 + 5)
@@ -307,7 +308,7 @@ def solve_shift_scheduling(params, output_proto):
         # (3, 0, 1, 3, 3, 3, 0),
     ]
 
-    # Weekly sum constraints on hours worked:
+    # Monthly sum constraints on hours worked:
     #     (hard_min, soft_min, min_penalty,
     #             soft_max, hard_max, max_penalty)
     monthly_hours_sum_constraints = [
@@ -376,7 +377,7 @@ def solve_shift_scheduling(params, output_proto):
     ]
 
     # Penalty for exceeding the cover constraint per shift type.
-    excess_cover_penalties = (100, 100, 100)
+    excess_cover_penalties = (200, 200, 200)
 
     num_days = num_weeks * 7
     num_months = int(num_weeks / 4)
@@ -450,27 +451,34 @@ def solve_shift_scheduling(params, output_proto):
                 obj_int_vars.extend(variables)
                 obj_int_coeffs.extend(coeffs)
 
-    #TODO(user): this does not work
+    # TODO(user): this does not work, anytime this is activated the model does not solve.
     # Monthly worked hours sum constraints
-    for ct in monthly_hours_sum_constraints:
-        hard_min, soft_min, min_cost, soft_max, hard_max, max_cost = ct
-        for e in range(num_employees):
-            for m in range(num_months):
-                works = [work[e, s, d + m * 28] for d in range(28) for s in range(1, num_shifts)]
-                variables, coeffs = add_soft_sum_hours_constraint(
-                    model,
-                    works,
-                    hard_min + employees[str(e)][1]*16,
-                    soft_min + employees[str(e)][1]*16,
-                    min_cost,
-                    soft_max + employees[str(e)][1]*16,
-                    hard_max + employees[str(e)][1]*16,
-                    max_cost,
-                    "monthly_hours_sum_constraint(employee %i, week %i)"
-                    % (e, m),
-                )
-                obj_int_vars.extend(variables)
-                obj_int_coeffs.extend(coeffs)
+    # for ct in monthly_hours_sum_constraints:
+    #     hard_min, soft_min, min_cost, soft_max, hard_max, max_cost = ct
+    #     for e in range(num_employees):
+    #         for m in range(num_months):
+    #             works = [work[e, s, d + m * 28] for d in range(28) for s in range(1, num_shifts)]
+    #             variables, coeffs = add_soft_sum_hours_constraint(
+    #                 model,
+    #                 works,
+    #                 hard_min + employees[e][1]*16,
+    #                 soft_min + employees[e][1]*16,
+    #                 min_cost,
+    #                 soft_max + employees[e][1]*16,
+    #                 hard_max + employees[e][1]*16,
+    #                 max_cost,
+    #                 "monthly_hours_sum_constraint(employee %i, month %i)"
+    #                 % (e, m),
+    #             )
+    #             obj_int_vars.extend(variables)
+    #             obj_int_coeffs.extend(coeffs)
+    #             print(obj_int_vars, obj_int_coeffs)
+    for e in range(num_employees):
+        min_hour = employees[e][1] * 16 - 256
+        max_hour = employees[e][1] * 16 + 32
+        hours = sum(work[e, s, d] for s in range(1, 3) for d in range(num_days))*8
+        model.Add(hours >= min_hour)
+        model.Add(hours <= max_hour)
 
     # Monthly sum constraints
     for ct in monthly_sum_constraints:
@@ -507,8 +515,8 @@ def solve_shift_scheduling(params, output_proto):
                 soft_max,
                 hard_max,
                 max_cost,
-                "monthly_weekend_sum_constraints(employee %i, shift %i, month %i)"
-                % (e, shift, m),
+                "monthly_weekend_sum_constraints(employee %i, shift %i)"
+                % (e, shift),
             )
             obj_int_vars.extend(variables)
             obj_int_coeffs.extend(coeffs)
@@ -617,7 +625,7 @@ def solve_shift_scheduling(params, output_proto):
                 for s in range(num_shifts):
                     if solver.BooleanValue(work[e, s, d]):
                         schedule += shifts[s] + " "
-            print("worker %i: %s" % (e, schedule))
+            print(employees[e][0], ": %s" % schedule)
         print()
 
         # Calculate and print an overview of which employees are working on the M, A and N shifts per day.
@@ -635,17 +643,29 @@ def solve_shift_scheduling(params, output_proto):
         for e in range(num_employees):
             for s in range(num_shifts):
                 if shifts[s] == "N":
-                    print("Employee %i is scheduled for Shift %s: %i times"
-                          % (e, shifts[s], sum(solver.BooleanValue(work[e, s, d]) for d in range(num_days))))
+                    print(employees[e][0], " is scheduled for Shift %s: %i times"
+                          % (shifts[s], sum(solver.BooleanValue(work[e, s, d]) for d in range(num_days))))
         print()
 
         # Calculate and print an overview of how many weekends each employee has worked in total.
         for e in range(num_employees):
             for s in range(num_shifts):
                 if shifts[s] == "O":
-                    print("Employee %i has a weekend off with shift %s: %i times"
-                          % (e, shifts[s], sum(solver.BooleanValue(work[e, s, d]) for d in weekends)))
+                    print(employees[e][0], " has a weekend off with shift %s: %i times"
+                          % (shifts[s], sum(solver.BooleanValue(work[e, s, d]) for d in weekends)))
         print()
+
+        # Calculate and print an overview of how many hours each employee has worked in total.
+        for e in range(num_employees):
+            total = 0
+            for s in range(1, num_shifts):
+                if shifts[s] != "N":
+                    total += sum(solver.Value(work[e, s, d]) for d in range(num_days))*8
+                if shifts[s] == "N":
+                    total += sum(solver.Value(work[e, s, d]) for d in range(num_days))*9
+            print(employees[e][0],
+                  " has worked %i hours in total but should have worked %i hours which is a %i hours difference"
+                  % (total, employees[e][1]*8, total-employees[e][1]*8))
 
         print("Penalties:")
         for i, var in enumerate(obj_bool_vars):
